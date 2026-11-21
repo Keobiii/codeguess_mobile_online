@@ -1,19 +1,21 @@
+import 'package:codeguess/features/authentication/presentation/notifiers/auth_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:codeguess/core/theme/app_theme.dart';
 // Adjust these two imports to where your widgets live
-import 'package:codeguess/features/codeguess/widget/outline_button.dart';
+import 'package:codeguess/features/widget/outline_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../codeguess/widget/outline_textfield.dart';
+import '../../../widget/outline_textfield.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,18 +27,29 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    context.push('/');
+    await ref
+        .read(authControllerProvider.notifier)
+        .signIn(_emailController.text.trim(), _passwordController.text);
 
-    // TODO: call the sign in notifier once the domain/data layers exist
-    // email: _emailController.text.trim()
-    // password: _passwordController.text
+    // context.push('/');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show auth errors as a snackbar
+    ref.listen(authControllerProvider, (previous, next) {
+      if (next is AsyncError) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('${next.error}')));
+      }
+    });
+
+    final isLoading = ref.watch(authControllerProvider).isLoading;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -70,6 +83,7 @@ class _LoginPageState extends State<LoginPage> {
                     OutlineTextfield(
                       controller: _emailController,
                       hintText: 'Email',
+                      enabled: !isLoading,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       autofillHints: const [AutofillHints.email],
@@ -84,6 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                     OutlineTextfield(
                       controller: _passwordController,
                       hintText: 'Password',
+                      enabled: !isLoading,
                       isPassword: true,
                       autofillHints: const [AutofillHints.password],
                       onSubmitted: (_) => _submit(),
@@ -95,7 +110,9 @@ class _LoginPageState extends State<LoginPage> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    OutlineButton(text: 'Log In', onPressed: _submit),
+                    isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : OutlineButton(text: 'Log In', onPressed: _submit),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -105,9 +122,9 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(color: AppTheme.secondaryText),
                         ),
                         TextButton(
-                          onPressed: () {
-                            context.push('/register');
-                          },
+                          onPressed: isLoading
+                              ? null
+                              : () => context.push('/register'),
                           child: const Text(
                             'Register',
                             style: TextStyle(

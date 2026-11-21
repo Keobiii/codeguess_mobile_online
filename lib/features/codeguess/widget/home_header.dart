@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../widget/logout_button.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
@@ -12,6 +13,8 @@ class HomeHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        const LogoutButton(),
+
         Text.rich(
           TextSpan(
             children: [

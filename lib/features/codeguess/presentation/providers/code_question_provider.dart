@@ -3,17 +3,14 @@ import 'package:codeguess/features/codeguess/domain/entities/code_question.dart'
 import 'package:codeguess/features/codeguess/domain/repositories/code_question_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/providers/supabase_provider.dart';
 import '../../data/datasources/code_question_remote_data_source.dart';
 import '../../data/datasources/code_question_remote_data_source_impl.dart';
 import '../../domain/usecases/get_code_questions.dart';
 import '../../domain/usecases/get_random_code_question.dart';
 
 // Supabase Client
-final supabaseClientProvider = Provider<SupabaseClient>((ref) {
-  return Supabase.instance.client;
-});
 
 // Remote Data Source
 final codeQuestionRemoteDataSourceProvider =

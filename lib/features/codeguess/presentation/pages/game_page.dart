@@ -4,8 +4,8 @@ import 'package:codeguess/features/codeguess/domain/entities/record_answer.dart'
 import 'package:codeguess/features/codeguess/presentation/notfiers/record_answer_notifier.dart';
 import 'package:codeguess/features/codeguess/widget/code_question_card.dart';
 import 'package:codeguess/features/codeguess/widget/game_header.dart';
-import 'package:codeguess/features/codeguess/widget/outline_button.dart';
-import 'package:codeguess/features/codeguess/widget/outline_textfield.dart';
+import 'package:codeguess/features/widget/outline_button.dart';
+import 'package:codeguess/features/widget/outline_textfield.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
