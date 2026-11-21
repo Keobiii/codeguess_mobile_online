@@ -1,5 +1,6 @@
 import '../entities/code_question.dart';
 
 abstract class CodeQuestionRepository {
-  List<CodeQuestion> getQuestions(String language);
+  Future<List<CodeQuestion>> getCodeQuestions();
+  Future<CodeQuestion> getRandomCodeQuestion(String language);
 }

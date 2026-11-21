@@ -35,7 +35,7 @@ class HomeHeader extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => context.go('/history'),
+          onTap: () => context.push('/history'),
           child: Icon(Iconsax.ranking_1, size: 30, color: Colors.white),
         ),
       ],

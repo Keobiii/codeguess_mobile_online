@@ -3,47 +3,54 @@ import 'package:codeguess/features/codeguess/domain/entities/code_question.dart'
 import 'package:codeguess/features/codeguess/domain/repositories/code_question_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../data/datasources/code_question_local_data_source.dart';
+import '../../data/datasources/code_question_remote_data_source.dart';
+import '../../data/datasources/code_question_remote_data_source_impl.dart';
+import '../../domain/usecases/get_code_questions.dart';
 import '../../domain/usecases/get_random_code_question.dart';
 
-// Local Data Source
-final codeQuestionLocalDataSourceProvider =
-    Provider<CodeQuestionLocalDataSource>((ref) {
-      return CodeQuestionLocalDataSource();
+// Supabase Client
+final supabaseClientProvider = Provider<SupabaseClient>((ref) {
+  return Supabase.instance.client;
+});
+
+// Remote Data Source
+final codeQuestionRemoteDataSourceProvider =
+    Provider<CodeQuestionRemoteDataSource>((ref) {
+      return CodeQuestionRemoteDataSourceImpl(
+        ref.watch(supabaseClientProvider),
+      );
     });
 
-// Reposritory
+// Repository
 final codeQuestionRepositoryProvider = Provider<CodeQuestionRepository>((ref) {
   return CodeQuestionRepositoryImpl(
-    ref.watch(codeQuestionLocalDataSourceProvider),
+    ref.watch(codeQuestionRemoteDataSourceProvider),
   );
 });
 
-// Use Case
-// final getCodeQuestionsProvider = Provider<GetCodeQuestions>((ref) {
-//   return GetCodeQuestions(ref.watch(codeQuestionRepositoryProvider));
-// });
+// Use Cases
+final getCodeQuestionsProvider = Provider<GetCodeQuestions>((ref) {
+  return GetCodeQuestions(ref.watch(codeQuestionRepositoryProvider));
+});
 
 final getRandomCodeQuestionProvider = Provider<GetRandomCodeQuestion>((ref) {
   return GetRandomCodeQuestion(ref.watch(codeQuestionRepositoryProvider));
 });
 
-// Questions
-// final codeQuestionsProvider = Provider<List<CodeQuestion>>((ref) {
-//   return ref.watch(getCodeQuestionsProvider).call();
-// });
-
-// final randomCodeQuestionProvider = Provider<CodeQuestion?>((ref) {
-//   return ref.watch(getRandomCodeQuestionProvider).call();
-// });
-
+// State
 final selectedLanguageProvider = StateProvider<String>((ref) {
   return 'JavaScript';
 });
 
-final randomCodeQuestionProvider = StateProvider<CodeQuestion?>((ref) {
-  final language = ref.watch(selectedLanguageProvider);
-
-  return ref.watch(getRandomCodeQuestionProvider).call(language);
+// All questions
+final codeQuestionsProvider = FutureProvider<List<CodeQuestion>>((ref) {
+  return ref.watch(getCodeQuestionsProvider).call();
 });
+
+// Random question for the selected language
+final randomCodeQuestionProvider = FutureProvider.autoDispose
+    .family<CodeQuestion, String>((ref, language) {
+      return ref.watch(getRandomCodeQuestionProvider).call(language);
+    });

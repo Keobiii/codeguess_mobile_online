@@ -86,7 +86,7 @@ class CodeQuestionCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      question.language,
+                      '${question.language} (${question.id})',
                       style: TextStyle(
                         color: AppTheme.secondaryText,
                         fontSize: 14,

@@ -8,8 +8,10 @@ import 'package:codeguess/features/codeguess/widget/outline_button.dart';
 import 'package:codeguess/features/codeguess/widget/outline_textfield.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/entities/code_question.dart';
 import '../providers/code_question_provider.dart';
 
 class GamePage extends ConsumerStatefulWidget {
@@ -80,13 +82,63 @@ class _GamePageState extends ConsumerState<GamePage> {
     });
 
     _stopwatch.reset();
-    // _stopwatch.start();
+  }
 
+  void _requestAnswerFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _answerFocusNode.requestFocus();
       }
     });
+  }
+
+  Future<void> _loadNextQuestion() async {
+    final provider = randomCodeQuestionProvider(widget.langauge);
+
+    ref.invalidate(provider);
+    _resetGame();
+
+    // Wait until the new question is loaded so the text field exists
+    // before we try to focus it.
+    try {
+      await ref.read(provider.future);
+    } catch (_) {
+      return; // error UI is shown by .when(error: ...)
+    }
+
+    _requestAnswerFocus();
+  }
+
+  Future<void> _submitAnswer(CodeQuestion question, String answer) async {
+    final elapseTime = _stopwatch.elapsed;
+    final codeAnswer = RecordAnswer(
+      questionId: question.id,
+      language: question.language,
+      answer: answer,
+      isCorrect: answer == question.answer ? 1 : 0,
+      time: elapseTime.inMilliseconds,
+    );
+
+    setState(() {
+      _answers.add(codeAnswer);
+    });
+
+    if (answer == question.answer) {
+      setState(() {
+        _isAnswered = true;
+      });
+      _pauseStopwatch();
+
+      _answerController.clear();
+      _answerFocusNode.unfocus();
+
+      await ref.read(recordAnswersProvider.notifier).addRecord(codeAnswer);
+
+      return;
+    }
+
+    _answerController.clear();
+    _requestAnswerFocus();
   }
 
   @override
@@ -98,16 +150,6 @@ class _GamePageState extends ConsumerState<GamePage> {
         _startStopWatch();
       }
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      ref.read(randomCodeQuestionProvider.notifier).state = ref
-          .read(getRandomCodeQuestionProvider)
-          .call(widget.langauge);
-    });
-
-    // _startStopWatch();
   }
 
   @override
@@ -120,52 +162,48 @@ class _GamePageState extends ConsumerState<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final question = ref.watch(randomCodeQuestionProvider);
+    final questionAsync = ref.watch(
+      randomCodeQuestionProvider(widget.langauge),
+    );
 
-    if (question == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return questionAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, _) => Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Failed to load question',
+                  style: TextStyle(color: AppTheme.text, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$error',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.secondaryText),
+                ),
+                const SizedBox(height: 16),
+                OutlineButton(
+                  text: 'Go Back',
+                  onPressed: () => context.go('/'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      data: (question) => _buildGame(question),
+    );
+  }
 
-    void submitAnswer(String answer) async {
-      final elapseTime = _stopwatch.elapsed;
-      final codeAnswer = RecordAnswer(
-        questionId: question.id,
-        language: question.language,
-        answer: answer,
-        isCorrect: answer == question.answer ? 1 : 0,
-        time: elapseTime.inMilliseconds,
-      );
-
-      setState(() {
-        _answers.add(codeAnswer);
-      });
-
-      // debugPrint('Answer: ${codeAnswer.answer}');
-      // debugPrint('Question ID: ${codeAnswer.questionId}');
-      // debugPrint('Time: ${codeAnswer.time} ms');
-
-      if (answer == question.answer) {
-        setState(() {
-          _isAnswered = true;
-        });
-        _pauseStopwatch();
-
-        _answerController.clear();
-        _answerFocusNode.unfocus();
-
-        await ref.read(recordAnswersProvider.notifier).addRecord(codeAnswer);
-
-        return;
-      }
-
-      _answerController.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _answerFocusNode.requestFocus();
-        }
-      });
-    }
-
+  Widget _buildGame(CodeQuestion question) {
     final sortedAnswers = [..._answers]
       ..sort((a, b) => b.time.compareTo(a.time));
 
@@ -241,20 +279,12 @@ class _GamePageState extends ConsumerState<GamePage> {
               _isAnswered
                   ? OutlineButton(
                       text: 'One More',
-                      onPressed: () {
-                        ref
-                            .read(randomCodeQuestionProvider.notifier)
-                            .state = ref
-                            .read(getRandomCodeQuestionProvider)
-                            .call(widget.langauge);
-
-                        _resetGame();
-                      },
+                      onPressed: _loadNextQuestion,
                     )
                   : OutlineTextfield(
                       controller: _answerController,
                       focusNode: _answerFocusNode,
-                      onSubmitted: submitAnswer,
+                      onSubmitted: (answer) => _submitAnswer(question, answer),
                       enabled: !_isAnswered,
                     ),
             ],
