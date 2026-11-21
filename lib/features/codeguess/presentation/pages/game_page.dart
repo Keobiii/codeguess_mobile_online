@@ -284,6 +284,7 @@ class _GamePageState extends ConsumerState<GamePage> {
                   : OutlineTextfield(
                       controller: _answerController,
                       focusNode: _answerFocusNode,
+                      hintText: 'Enter your answer',
                       onSubmitted: (answer) => _submitAnswer(question, answer),
                       enabled: !_isAnswered,
                     ),
